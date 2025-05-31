@@ -1,0 +1,102 @@
+\begin{lstlisting}[language=Dart, caption=Implémentation des bulles de messages, style=dartstyle]
+Widget _buildMessageBubble(Message message) {
+  final theme = Theme.of(context);
+  final isMe = message.isMe;
+  
+  return Padding(
+    padding: EdgeInsets.only(
+      bottom: 12,
+      left: isMe ? 64 : 8,
+      right: isMe ? 8 : 64,
+    ),
+    child: Row(
+      mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        // Afficher l'avatar pour les messages reçus
+        if (!isMe) ...[
+          BlocBuilder<ConversationBloc, ConversationState>(
+            builder: (context, state) {
+              if (state is ConversationLoaded) {
+                final conversation = state.conversations.firstWhere(
+                  (conv) => conv.id == widget.conversationId,
+                  orElse: () => Conversation(id: '', contactName: 'Chat', lastMessage: '', timestamp: DateTime.now()),
+                );
+                return AvatarUtils.getAvatar(
+                  name: conversation.contactName,
+                  radius: 16,
+                );
+              }
+              return const SizedBox(width: 32, height: 32); // Placeholder
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
+        
+        // Bulle de message
+        Flexible(
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.75,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: isMe ? theme.colorScheme.primary : theme.colorScheme.surface,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(16),
+                topRight: const Radius.circular(16),
+                bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(4),
+                bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(16),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message.content,
+                  style: TextStyle(
+                    color: isMe ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      DateFormat('h:mm a').format(message.timestamp),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isMe ? theme.colorScheme.onPrimary.withOpacity(0.7) : theme.colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                    ),
+                    if (isMe)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Icon(
+                          Icons.done_all,
+                          size: 14,
+                          color: theme.colorScheme.onPrimary.withOpacity(0.7),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Espace pour l'avatar des messages envoyés
+        if (isMe) const SizedBox(width: 32),
+      ],
+    ),
+  );
+}
+\end{lstlisting}

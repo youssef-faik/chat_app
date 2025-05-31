@@ -1,0 +1,79 @@
+\begin{lstlisting}[language=Dart, caption=Implémentation du ConversationBloc, style=dartstyle]
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:chat_app/bloc/conversation/conversation_event.dart';
+import 'package:chat_app/bloc/conversation/conversation_state.dart';
+import 'package:chat_app/models/conversation_model.dart';
+import 'package:chat_app/models/message_model.dart';
+import 'package:chat_app/data/mock_data.dart';
+
+class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
+  List<Conversation> _conversations = [];
+  Map<String, List<Message>> _messages = {};
+
+  ConversationBloc() : super(ConversationInitial()) {
+    on<LoadConversations>(_onLoadConversations);
+    on<SendMessage>(_onSendMessage);
+    on<MarkConversationAsRead>(_onMarkConversationAsRead);
+    on<CreateConversation>(_onCreateConversation);
+  }
+
+  void _onLoadConversations(LoadConversations event, Emitter<ConversationState> emit) {
+    emit(ConversationLoading());
+    // Charge les données simulées
+    _conversations = List.from(mockConversations);
+    _messages = Map.from(mockMessages);
+    emit(ConversationLoaded(conversations: _conversations, messages: _messages));
+  }
+
+  void _onSendMessage(SendMessage event, Emitter<ConversationState> emit) {
+    // Crée un nouveau message de l'utilisateur
+    final newMessage = Message(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      conversationId: event.conversationId,
+      content: event.text,
+      isMe: true,
+      timestamp: DateTime.now(),
+    );
+
+    // Crée une nouvelle map pour que Equatable détecte le changement
+    final Map<String, List<Message>> updatedMessages = Map.from(_messages);
+    updatedMessages[event.conversationId] = [...(updatedMessages[event.conversationId] ?? []), newMessage];
+    _messages = updatedMessages;
+
+    // Met à jour le dernier message et l'horodatage de la conversation
+    final conversationIndex = _conversations.indexWhere((conv) => conv.id == event.conversationId);
+    if (conversationIndex != -1) {
+      final originalConversation = _conversations[conversationIndex];
+      _conversations[conversationIndex] = Conversation(
+        id: originalConversation.id,
+        contactName: originalConversation.contactName,
+        lastMessage: "You: ${event.text}", // Préfixe "You: " pour les messages de l'utilisateur
+        timestamp: newMessage.timestamp,
+        avatarUrl: originalConversation.avatarUrl, 
+        unreadCount: 0, // Réinitialise le compteur de non-lus
+      );
+    }
+    
+    // Crée une nouvelle liste pour les conversations (important pour l'immutabilité)
+    final List<Conversation> updatedConversationsList = List.from(_conversations);
+    if (conversationIndex != -1) { 
+        final updatedConversation = updatedConversationsList.removeAt(conversationIndex);
+        updatedConversationsList.insert(0, updatedConversation); // Déplace la conversation en haut
+    }
+    _conversations = updatedConversationsList;
+
+    // Émet l'état mis à jour avec le message de l'utilisateur
+    emit(ConversationLoaded(conversations: updatedConversationsList, messages: updatedMessages));
+    
+    // Simulation d'une réponse automatique si activée
+    if (event.autoReply) {
+      // Simuler un délai avant la réponse du contact
+      Future.delayed(const Duration(seconds: 1, milliseconds: 500), () {
+        // Logique de réponse automatique...
+      });
+    }
+  }
+  
+  // Autres méthodes pour gérer les événements...
+}
+\end{lstlisting}

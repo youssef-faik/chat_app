@@ -1,0 +1,99 @@
+
+graph TD
+    %% Main Application Structure
+    App[Main App/main.dart] --> UI[UI Layer]
+    App --> BLoC[BLoC Layer]
+    App --> Data[Data Layer]
+    App --> Utils[Utils Layer]
+    
+    %% Main App Configuration
+    App --> AppConfig[App Configuration]
+    AppConfig --> MaterialApp[MaterialApp]
+    AppConfig --> ThemeConfig[Theme Configuration]
+    AppConfig --> RouteConfig[Route Configuration]
+    AppConfig --> BlocProviders[BLoC Providers]
+    
+    %% UI Layer
+    UI --> ConversationListScreen[Conversation List Screen]
+    UI --> ConversationDetailScreen[Conversation Detail Screen]
+    UI --> Widgets[Reusable Widgets]
+    
+    %% Conversation List Screen Details
+    ConversationListScreen --> ListAppBar[List App Bar]
+    ConversationListScreen --> ConversationListView[Conversation ListView]
+    ConversationListScreen --> FloatingButton[New Chat FAB]
+    
+    %% Conversation Detail Screen Details
+    ConversationDetailScreen --> DetailAppBar[Detail App Bar]
+    ConversationDetailScreen --> MessagesListView[Messages ListView]
+    ConversationDetailScreen --> MessageInputField[Message Input Field]
+    
+    %% Widgets Detail
+    Widgets --> MessageBubble[Message Bubble]
+    Widgets --> NewConversationDialog[New Conversation Dialog]
+    Widgets --> ConversationTile[Conversation Tile]
+    Widgets --> UnreadBadge[Unread Badge]
+    Widgets --> StatusIndicators[Status Indicators]
+    
+    %% BLoC Layer
+    BLoC --> ConversationBloc[Conversation BLoC]
+    
+    %% BLoC Components
+    ConversationBloc --> Events[Conversation Events]
+    ConversationBloc --> States[Conversation States]
+    
+    %% Events
+    Events --> LoadConversations[Load Conversations]
+    Events --> SendMessage[Send Message]
+    Events --> CreateConversation[Create Conversation]
+    Events --> MarkAsRead[Mark As Read]
+    Events --> SimulateReceiveMessage[Simulate Receive Message]
+      %% States
+    States --> Initial[Initial State]
+    States --> Loading[Loading State]
+    States --> Loaded[Loaded State]
+    States --> Error[Error State]
+    
+    %% Data Layer
+    Data --> Models[Data Models]
+    Data --> MockData[Mock Data]
+    
+    %% Models
+    Models --> ConversationModel[Conversation Model]
+    Models --> MessageModel[Message Model]
+    
+    %% Mock Data Details
+    MockData --> MockConversations[Mock Conversations]
+    MockData --> MockMessages[Mock Messages]
+    
+    %% Utils Layer
+    Utils --> AvatarUtils[Avatar Utilities]
+    Utils --> DateTimeUtils[DateTime Formatting]
+    Utils --> StringUtils[String Helpers]
+    
+    %% Navigation Flow
+    ConversationListScreen -- "Navigate to" --> ConversationDetailScreen
+    ConversationListScreen -- "Opens" --> NewConversationDialog
+    
+    %% Data Flow
+    UI -- "Events" --> ConversationBloc
+    ConversationBloc -- "States" --> UI
+    ConversationBloc -- "CRUD Operations" --> Data
+    Data -- "Data" --> ConversationBloc
+    
+    %% Styling
+    classDef uiClass fill:#D6EAF8,stroke:#2E86C1,stroke-width:2px
+    classDef blocClass fill:#D5F5E3,stroke:#27AE60,stroke-width:2px
+    classDef dataClass fill:#FADBD8,stroke:#E74C3C,stroke-width:2px
+    classDef eventClass fill:#E8DAEF,stroke:#8E44AD,stroke-width:1px
+    classDef stateClass fill:#FCF3CF,stroke:#F1C40F,stroke-width:1px
+    classDef utilClass fill:#F9E79F,stroke:#F39C12,stroke-width:1px
+    classDef configClass fill:#D7BDE2,stroke:#9B59B6,stroke-width:1px
+    
+    class App,UI,ConversationListScreen,ConversationDetailScreen,Widgets,MessageBubble,NewConversationDialog,ConversationTile,UnreadBadge,StatusIndicators,ListAppBar,DetailAppBar,MessagesListView,MessageInputField,FloatingButton uiClass
+    class BLoC,ConversationBloc,Events,States blocClass
+    class Data,Models,MockData,ConversationModel,MessageModel,MockConversations,MockMessages dataClass
+    class LoadConversations,SendMessage,CreateConversation,MarkAsRead,SimulateReceiveMessage eventClass
+    class Initial,Loading,Loaded,Error stateClass
+    class Utils,AvatarUtils,DateTimeUtils,StringUtils utilClass
+    class AppConfig,MaterialApp,ThemeConfig,RouteConfig,BlocProviders configClass

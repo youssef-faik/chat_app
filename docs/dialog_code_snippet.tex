@@ -1,0 +1,74 @@
+\begin{lstlisting}[language=Dart, caption=Dialogue de création d'une nouvelle conversation, style=dartstyle]
+void _showCreateConversationDialog(BuildContext parentContext) {
+  final theme = Theme.of(parentContext);
+  final TextEditingController nameController = TextEditingController();
+  String previewName = '';
+  
+  showDialog(
+    context: parentContext,
+    builder: (BuildContext dialogContext) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.person_add, color: theme.colorScheme.primary),
+                const SizedBox(width: 12),
+                const Text('New Conversation'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (previewName.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  AvatarUtils.getAvatar(
+                    name: previewName,
+                    radius: 40,
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    hintText: "Enter contact's name",
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.words,
+                  onChanged: (value) {
+                    setState(() {
+                      previewName = value;
+                    });
+                  },
+                ),
+              ],
+            ),
+            actions: <Widget>[
+              TextButton.icon(
+                icon: const Icon(Icons.cancel_outlined),
+                label: const Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                },
+              ),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.check),
+                label: const Text('Create'),
+                onPressed: () {
+                  if (nameController.text.trim().isNotEmpty) {
+                    parentContext.read<ConversationBloc>().add(
+                      CreateConversation(contactName: nameController.text.trim())
+                    );
+                    Navigator.of(dialogContext).pop();
+                  }
+                },
+              ),
+            ],
+          );
+        }
+      );
+    },
+  );
+}
+\end{lstlisting}
