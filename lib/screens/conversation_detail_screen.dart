@@ -2,7 +2,8 @@ import 'package:chat_app/bloc/conversation/conversation_bloc.dart';
 import 'package:chat_app/bloc/conversation/conversation_event.dart';
 import 'package:chat_app/bloc/conversation/conversation_state.dart';
 import 'package:chat_app/models/message_model.dart';
-import 'package:chat_app/models/conversation_model.dart'; // Added this line
+import 'package:chat_app/models/conversation_model.dart';
+import 'package:chat_app/utils/avatar_utils.dart'; // Import AvatarUtils
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -19,6 +20,7 @@ class ConversationDetailScreen extends StatefulWidget {
 class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController(); // Add ScrollController
+  Widget? _tempMessage; // Temporary message widget for visual feedback
 
   @override
   void initState() { // Add initState
@@ -57,16 +59,9 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                 children: [
                   Hero(
                     tag: 'avatar-${widget.conversationId}',
-                    child: CircleAvatar(
+                    child: AvatarUtils.getAvatar(
+                      name: conversation.contactName,
                       radius: 20,
-                      backgroundColor: _getAvatarColor(conversation.contactName),
-                      child: Text(
-                        conversation.contactName.isNotEmpty ? conversation.contactName[0].toUpperCase() : '?',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -177,7 +172,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                     }
                     
                     return ListView.builder(
-                      controller: _scrollController,
+                      controller: _scrollController, // Assign controller
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
                       itemCount: messages.length,
                       itemBuilder: (context, index) {
@@ -208,6 +203,14 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                                 ),
                               ),
                             _buildMessageBubble(message),
+                            
+                            // Show the temporary message at the end of the list
+                            if (index == messages.length - 1 && _tempMessage != null)
+                              AnimatedOpacity(
+                                opacity: 1.0,
+                                duration: const Duration(milliseconds: 300),
+                                child: _tempMessage!,
+                              ),
                           ],
                         );
                       },
@@ -252,69 +255,99 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
     final theme = Theme.of(context);
     final isMe = message.isMe;
     
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
-        ),
-        margin: EdgeInsets.only(
-          bottom: 8,
-          left: isMe ? 64 : 8,
-          right: isMe ? 8 : 64,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isMe ? theme.colorScheme.primary : theme.colorScheme.surface,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(4),
-            bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(16),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: 12,
+        left: isMe ? 64 : 8,
+        right: isMe ? 8 : 64,
+      ),
+      child: Row(
+        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Display avatar for received messages
+          if (!isMe) ...[
+            BlocBuilder<ConversationBloc, ConversationState>(
+              builder: (context, state) {
+                if (state is ConversationLoaded) {
+                  final conversation = state.conversations.firstWhere(
+                    (conv) => conv.id == widget.conversationId,
+                    orElse: () => Conversation(id: '', contactName: 'Chat', lastMessage: '', timestamp: DateTime.now()),
+                  );
+                  return AvatarUtils.getAvatar(
+                    name: conversation.contactName,
+                    radius: 16,
+                  );
+                }
+                return const SizedBox(width: 32, height: 32); // Placeholder
+              },
             ),
+            const SizedBox(width: 8),
           ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              message.content,
-              style: TextStyle(
-                color: isMe ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
-                fontSize: 16,
+          
+          // Message bubble
+          Flexible(
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.75,
               ),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text(
-                  DateFormat('h:mm a').format(message.timestamp),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isMe ? theme.colorScheme.onPrimary.withOpacity(0.7) : theme.colorScheme.onSurface.withOpacity(0.6),
-                  ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: isMe ? theme.colorScheme.primary : theme.colorScheme.surface,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(4),
+                  bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(16),
                 ),
-                if (isMe)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4),
-                    child: Icon(
-                      Icons.done_all,
-                      size: 14,
-                      color: theme.colorScheme.onPrimary.withOpacity(0.7),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    message.content,
+                    style: TextStyle(
+                      color: isMe ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
+                      fontSize: 16,
                     ),
                   ),
-              ],
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        DateFormat('h:mm a').format(message.timestamp),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isMe ? theme.colorScheme.onPrimary.withOpacity(0.7) : theme.colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                      ),
+                      if (isMe)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Icon(
+                            Icons.done_all,
+                            size: 14,
+                            color: theme.colorScheme.onPrimary.withOpacity(0.7),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+            // Avatar or empty space for my messages
+          if (isMe) const SizedBox(width: 32),
+        ],
       ),
     );
   }
@@ -413,9 +446,88 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
 
   void _sendMessage() {
     if (_messageController.text.trim().isNotEmpty) {
-      context.read<ConversationBloc>().add(SendMessage(conversationId: widget.conversationId, text: _messageController.text.trim()));
+      final messageText = _messageController.text.trim();
       _messageController.clear();
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom()); // Scroll after sending
+      
+      // Create a temporary bubble with sending indicator
+      final tempKey = GlobalKey();
+      
+      // Add temporary visual feedback
+      setState(() {
+        _tempMessage = Container(
+          key: tempKey,
+          margin: const EdgeInsets.only(right: 8, bottom: 12, left: 64),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.75,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.7),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(16),
+              topRight: Radius.circular(16),
+              bottomLeft: Radius.circular(16),
+              bottomRight: Radius.circular(4),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                messageText,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onPrimary,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.7),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Sending...',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      });
+      
+      // Scroll to show the temp message
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      
+      // Simulate network delay and then send the actual message
+      Future.delayed(const Duration(milliseconds: 300), () {
+        setState(() {
+          _tempMessage = null;
+        });
+        
+        // Now send the actual message
+        context.read<ConversationBloc>().add(
+          SendMessage(
+            conversationId: widget.conversationId,
+            text: messageText,
+          ),
+        );
+        
+        // Scroll to the bottom after sending
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      });
     }
   }
 

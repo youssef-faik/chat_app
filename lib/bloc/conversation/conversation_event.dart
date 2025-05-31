@@ -12,11 +12,16 @@ class LoadConversations extends ConversationEvent {}
 class SendMessage extends ConversationEvent {
   final String conversationId;
   final String text;
+  final bool autoReply; // Add a parameter to control auto-reply
 
-  const SendMessage({required this.conversationId, required this.text});
+  const SendMessage({
+    required this.conversationId,
+    required this.text,
+    this.autoReply = true, // Default to true
+  });
 
   @override
-  List<Object> get props => [conversationId, text];
+  List<Object> get props => [conversationId, text, autoReply];
 }
 
 class MarkConversationAsRead extends ConversationEvent {

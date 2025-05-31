@@ -3,6 +3,7 @@ import 'package:chat_app/bloc/conversation/conversation_event.dart';
 import 'package:chat_app/bloc/conversation/conversation_state.dart';
 import 'package:chat_app/models/conversation_model.dart';
 import 'package:chat_app/screens/conversation_detail_screen.dart';
+import 'package:chat_app/utils/avatar_utils.dart'; // Import the AvatarUtils
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -96,17 +97,9 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   leading: Hero(
                     tag: 'avatar-${conversation.id}',
-                    child: CircleAvatar(
+                    child: AvatarUtils.getAvatar(
+                      name: conversation.contactName,
                       radius: 28,
-                      backgroundColor: _getAvatarColor(conversation.contactName),
-                      child: Text(
-                        conversation.contactName.isNotEmpty ? conversation.contactName[0].toUpperCase() : '?',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                        ),
-                      ),
                     ),
                   ),
                   title: Row(
@@ -137,9 +130,25 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                     padding: const EdgeInsets.only(top: 4),
                     child: Row(
                       children: [
+                        // Display a small avatar if the last message is from the contact (not from the user)
+                        if (!conversation.lastMessage.startsWith('You: ') && 
+                            !conversation.lastMessage.startsWith('Conversation started'))
+                          Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: AvatarUtils.getAvatar(
+                              name: conversation.contactName,
+                              radius: 8,
+                            ),
+                          ),
+                        
                         Expanded(
                           child: Text(
-                            conversation.lastMessage,
+                            // Add "You: " prefix if the last message is from the user
+                            conversation.lastMessage.startsWith('You: ') 
+                                ? conversation.lastMessage
+                                : conversation.lastMessage.startsWith('Conversation started')
+                                    ? conversation.lastMessage
+                                    : '${conversation.contactName}: ${conversation.lastMessage}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -257,49 +266,72 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
   void _showCreateConversationDialog(BuildContext parentContext) {
     final theme = Theme.of(parentContext);
     final TextEditingController nameController = TextEditingController();
+    String previewName = '';
     
     showDialog(
       context: parentContext,
       builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.person_add, color: theme.colorScheme.primary),
-              const SizedBox(width: 12),
-              const Text('New Conversation'),
-            ],
-          ),
-          content: TextField(
-            controller: nameController,
-            decoration: const InputDecoration(
-              hintText: "Enter contact's name",
-              prefixIcon: Icon(Icons.person),
-            ),
-            autofocus: true,
-            textCapitalization: TextCapitalization.words,
-          ),
-          actions: <Widget>[
-            TextButton.icon(
-              icon: const Icon(Icons.cancel_outlined),
-              label: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
-            ),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.check),
-              label: const Text('Create'),
-              onPressed: () {
-                if (nameController.text.trim().isNotEmpty) {
-                  parentContext.read<ConversationBloc>().add(CreateConversation(contactName: nameController.text.trim()));
-                  Navigator.of(dialogContext).pop();
-                }
-              },
-            ),
-          ],
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.person_add, color: theme.colorScheme.primary),
+                  const SizedBox(width: 12),
+                  const Text('New Conversation'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (previewName.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    AvatarUtils.getAvatar(
+                      name: previewName,
+                      radius: 40,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      hintText: "Enter contact's name",
+                      prefixIcon: Icon(Icons.person),
+                    ),
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.words,
+                    onChanged: (value) {
+                      setState(() {
+                        previewName = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: <Widget>[
+                TextButton.icon(
+                  icon: const Icon(Icons.cancel_outlined),
+                  label: const Text('Cancel'),
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                  },
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.check),
+                  label: const Text('Create'),
+                  onPressed: () {
+                    if (nameController.text.trim().isNotEmpty) {
+                      parentContext.read<ConversationBloc>().add(CreateConversation(contactName: nameController.text.trim()));
+                      Navigator.of(dialogContext).pop();
+                    }
+                  },
+                ),
+              ],
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            );
+          }
         );
       },
     );
