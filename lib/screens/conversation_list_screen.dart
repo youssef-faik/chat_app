@@ -42,12 +42,15 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                 final conversation = state.conversations[index];
                 return ListTile(
                   leading: CircleAvatar(
-                    backgroundImage: conversation.avatarUrl != null
-                        ? NetworkImage(conversation.avatarUrl!)
-                        : null,
-                    child: conversation.avatarUrl == null
-                        ? Text(conversation.contactName[0])
-                        : null,
+                    backgroundColor: Theme.of(context).colorScheme.primaryContainer, // Use a theme color for background
+                    child: Text(
+                      conversation.contactName.isNotEmpty ? conversation.contactName[0].toUpperCase() : '?', // Display first letter or '?'
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onPrimaryContainer, // Use a contrasting theme color for text
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20, // Adjust as needed
+                      ),
+                    ),
                   ),
                   title: Text(conversation.contactName),
                   subtitle: Text(conversation.lastMessage, maxLines: 1, overflow: TextOverflow.ellipsis),

@@ -37,7 +37,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
           Expanded(
             child: BlocBuilder<ConversationBloc, ConversationState>(
               builder: (context, state) {
-                if (state is ConversationLoading && (state.messages[widget.conversationId] == null || state.messages[widget.conversationId]!.isEmpty)) {
+                if (state is ConversationLoading) { // Simplified condition for loading
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (state is ConversationLoaded) {
