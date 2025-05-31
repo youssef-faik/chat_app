@@ -13,6 +13,7 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
     on<LoadConversations>(_onLoadConversations);
     on<SendMessage>(_onSendMessage);
     on<MarkConversationAsRead>(_onMarkConversationAsRead);
+    on<CreateConversation>(_onCreateConversation); // Register new event handler
   }
 
   void _onLoadConversations(LoadConversations event, Emitter<ConversationState> emit) {
@@ -83,5 +84,26 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
 
       emit(ConversationLoaded(conversations: updatedConversations, messages: Map.from(_messages)));
     }
+  }
+
+  void _onCreateConversation(CreateConversation event, Emitter<ConversationState> emit) {
+    final newConversationId = DateTime.now().millisecondsSinceEpoch.toString();
+    final newConversation = Conversation(
+      id: newConversationId,
+      contactName: event.contactName,
+      lastMessage: 'Conversation started',
+      timestamp: DateTime.now(),
+      unreadCount: 0,
+      // avatarUrl: null, // Can be omitted, defaults to null
+    );
+
+    final List<Conversation> updatedConversations = [newConversation, ..._conversations];
+    _conversations = updatedConversations;
+
+    final Map<String, List<Message>> updatedMessages = Map.from(_messages);
+    updatedMessages[newConversationId] = []; // Initialize with empty messages
+    _messages = updatedMessages;
+
+    emit(ConversationLoaded(conversations: updatedConversations, messages: updatedMessages));
   }
 }

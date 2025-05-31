@@ -27,3 +27,12 @@ class MarkConversationAsRead extends ConversationEvent {
   @override
   List<Object> get props => [conversationId];
 }
+
+class CreateConversation extends ConversationEvent {
+  final String contactName;
+
+  const CreateConversation({required this.contactName});
+
+  @override
+  List<Object> get props => [contactName];
+}

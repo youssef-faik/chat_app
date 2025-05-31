@@ -97,13 +97,44 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // TODO: Implement create new conversation
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('New conversation feature not implemented yet.')),
-          );
+          _showCreateConversationDialog(context);
         },
         child: const Icon(Icons.add),
       ),
+    );
+  }
+
+  void _showCreateConversationDialog(BuildContext parentContext) {
+    final TextEditingController nameController = TextEditingController();
+    showDialog(
+      context: parentContext,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('New Conversation'),
+          content: TextField(
+            controller: nameController,
+            decoration: const InputDecoration(hintText: "Enter contact's name"),
+            autofocus: true,
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Create'),
+              onPressed: () {
+                if (nameController.text.trim().isNotEmpty) {
+                  parentContext.read<ConversationBloc>().add(CreateConversation(contactName: nameController.text.trim()));
+                  Navigator.of(dialogContext).pop();
+                }
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }
