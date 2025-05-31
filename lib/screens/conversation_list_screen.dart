@@ -23,9 +23,35 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
+      backgroundColor: theme.colorScheme.background,
       appBar: AppBar(
-        title: const Text('Conversations'),
+        title: const Text(
+          'Chats',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {
+              // Future enhancement: Implement search functionality
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Search functionality coming soon!')),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.more_vert),
+            onPressed: () {
+              // Future enhancement: Show menu options
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Menu options coming soon!')),
+              );
+            },
+          ),
+        ],
       ),
       body: BlocBuilder<ConversationBloc, ConversationState>(
         builder: (context, state) {
@@ -34,44 +60,115 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
           }
           if (state is ConversationLoaded) {
             if (state.conversations.isEmpty) {
-              return const Center(child: Text('No conversations yet.'));
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.chat_bubble_outline,
+                      size: 80,
+                      color: theme.colorScheme.primary.withOpacity(0.5),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No conversations yet',
+                      style: theme.textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Start a new chat by tapping the + button',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onBackground.withOpacity(0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              );
             }
-            return ListView.builder(
+            return ListView.separated(
               itemCount: state.conversations.length,
+              separatorBuilder: (context, index) => const Divider(height: 1, indent: 76),
               itemBuilder: (context, index) {
                 final conversation = state.conversations[index];
+                final hasUnreadMessages = conversation.unreadCount != null && conversation.unreadCount! > 0;
+                
                 return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Theme.of(context).colorScheme.primaryContainer, // Use a theme color for background
-                    child: Text(
-                      conversation.contactName.isNotEmpty ? conversation.contactName[0].toUpperCase() : '?', // Display first letter or '?'
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onPrimaryContainer, // Use a contrasting theme color for text
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20, // Adjust as needed
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  leading: Hero(
+                    tag: 'avatar-${conversation.id}',
+                    child: CircleAvatar(
+                      radius: 28,
+                      backgroundColor: _getAvatarColor(conversation.contactName),
+                      child: Text(
+                        conversation.contactName.isNotEmpty ? conversation.contactName[0].toUpperCase() : '?',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
                       ),
                     ),
                   ),
-                  title: Text(conversation.contactName),
-                  subtitle: Text(conversation.lastMessage, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                  title: Row(
                     children: [
-                      Text(DateFormat('hh:mm a').format(conversation.timestamp)),
-                      if (conversation.unreadCount != null && conversation.unreadCount! > 0)
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
+                      Expanded(
+                        child: Text(
+                          conversation.contactName,
+                          style: TextStyle(
+                            fontWeight: hasUnreadMessages ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 17,
                           ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        DateFormat('h:mm a').format(conversation.timestamp),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: hasUnreadMessages 
+                            ? theme.colorScheme.primary 
+                            : theme.colorScheme.onBackground.withOpacity(0.5),
+                          fontWeight: hasUnreadMessages ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      children: [
+                        Expanded(
                           child: Text(
-                            conversation.unreadCount.toString(),
-                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                            conversation.lastMessage,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: hasUnreadMessages 
+                                ? theme.colorScheme.onBackground 
+                                : theme.colorScheme.onBackground.withOpacity(0.6),
+                              fontWeight: hasUnreadMessages ? FontWeight.w500 : FontWeight.normal,
+                            ),
                           ),
                         ),
-                    ],
+                        if (hasUnreadMessages)
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            margin: const EdgeInsets.only(left: 8),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              conversation.unreadCount.toString(),
+                              style: TextStyle(
+                                color: theme.colorScheme.onPrimary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                   onTap: () {
                     context.read<ConversationBloc>().add(MarkConversationAsRead(conversationId: conversation.id));
@@ -90,7 +187,37 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
             );
           }
           if (state is ConversationError) {
-            return Center(child: Text('Error: ${state.message}'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 60,
+                    color: theme.colorScheme.error,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error',
+                    style: theme.textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    state.message,
+                    style: theme.textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      context.read<ConversationBloc>().add(LoadConversations());
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Try Again'),
+                  ),
+                ],
+              ),
+            );
           }
           return const Center(child: Text('Press a button to load conversations'));
         },
@@ -99,32 +226,69 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
         onPressed: () {
           _showCreateConversationDialog(context);
         },
+        elevation: 4,
+        shape: const CircleBorder(),
         child: const Icon(Icons.add),
       ),
     );
   }
+  
+  // Helper method to generate consistent colors for avatars based on contact name
+  Color _getAvatarColor(String name) {
+    if (name.isEmpty) return Colors.blueGrey;
+    
+    // List of pleasant colors for avatars
+    final colors = [
+      const Color(0xFF6750A4), // Purple
+      const Color(0xFF16A34A), // Green
+      const Color(0xFFEF4444), // Red
+      const Color(0xFF3B82F6), // Blue
+      const Color(0xFFF59E0B), // Amber
+      const Color(0xFF8B5CF6), // Violet
+      const Color(0xFFEC4899), // Pink
+      const Color(0xFF0D9488), // Teal
+    ];
+    
+    // Use a hash of the name to select a consistent color
+    final hashCode = name.hashCode.abs();
+    return colors[hashCode % colors.length];
+  }
 
   void _showCreateConversationDialog(BuildContext parentContext) {
+    final theme = Theme.of(parentContext);
     final TextEditingController nameController = TextEditingController();
+    
     showDialog(
       context: parentContext,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text('New Conversation'),
+          title: Row(
+            children: [
+              Icon(Icons.person_add, color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              const Text('New Conversation'),
+            ],
+          ),
           content: TextField(
             controller: nameController,
-            decoration: const InputDecoration(hintText: "Enter contact's name"),
+            decoration: const InputDecoration(
+              hintText: "Enter contact's name",
+              prefixIcon: Icon(Icons.person),
+            ),
             autofocus: true,
+            textCapitalization: TextCapitalization.words,
           ),
           actions: <Widget>[
-            TextButton(
-              child: const Text('Cancel'),
+            TextButton.icon(
+              icon: const Icon(Icons.cancel_outlined),
+              label: const Text('Cancel'),
               onPressed: () {
                 Navigator.of(dialogContext).pop();
               },
             ),
-            TextButton(
-              child: const Text('Create'),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.check),
+              label: const Text('Create'),
               onPressed: () {
                 if (nameController.text.trim().isNotEmpty) {
                   parentContext.read<ConversationBloc>().add(CreateConversation(contactName: nameController.text.trim()));
@@ -133,6 +297,9 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
               },
             ),
           ],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         );
       },
     );
