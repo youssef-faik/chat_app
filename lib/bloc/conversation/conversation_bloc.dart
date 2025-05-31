@@ -57,15 +57,27 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
   void _onMarkConversationAsRead(MarkConversationAsRead event, Emitter<ConversationState> emit) {
     final conversationIndex = _conversations.indexWhere((conv) => conv.id == event.conversationId);
     if (conversationIndex != -1) {
-      _conversations[conversationIndex] = Conversation(
-        id: _conversations[conversationIndex].id,
-        contactName: _conversations[conversationIndex].contactName,
-        lastMessage: _conversations[conversationIndex].lastMessage,
-        timestamp: _conversations[conversationIndex].timestamp,
-        avatarUrl: _conversations[conversationIndex].avatarUrl,
+      // Create a new list from the existing conversations
+      final List<Conversation> updatedConversations = List.from(_conversations);
+      
+      // Get the specific conversation to update
+      final Conversation conversationToUpdate = updatedConversations[conversationIndex];
+      
+      // Create a new Conversation instance with the unreadCount set to 0
+      updatedConversations[conversationIndex] = Conversation(
+        id: conversationToUpdate.id,
+        contactName: conversationToUpdate.contactName,
+        lastMessage: conversationToUpdate.lastMessage,
+        timestamp: conversationToUpdate.timestamp,
+        avatarUrl: conversationToUpdate.avatarUrl,
         unreadCount: 0, // Mark as read
       );
-      emit(ConversationLoaded(conversations: List.from(_conversations), messages: Map.from(_messages)));
+      
+      // Update the internal state (optional, but good practice if _conversations is used elsewhere)
+      _conversations = updatedConversations;
+
+      // Emit the new state with the updated list of conversations
+      emit(ConversationLoaded(conversations: updatedConversations, messages: Map.from(_messages)));
     }
   }
 }
