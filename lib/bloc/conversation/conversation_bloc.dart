@@ -32,51 +32,55 @@ class ConversationBloc extends Bloc<ConversationEvent, ConversationState> {
       timestamp: DateTime.now(),
     );
 
-    // Add message to the specific conversation's list
-    _messages[event.conversationId] = [...(_messages[event.conversationId] ?? []), newMessage];
+    // Create a new map for messages to ensure Equatable detects change
+    final Map<String, List<Message>> updatedMessages = Map.from(_messages);
+    updatedMessages[event.conversationId] = [...(updatedMessages[event.conversationId] ?? []), newMessage];
+    _messages = updatedMessages; // Update internal messages
 
     // Update the last message and timestamp of the conversation
     final conversationIndex = _conversations.indexWhere((conv) => conv.id == event.conversationId);
     if (conversationIndex != -1) {
+      final originalConversation = _conversations[conversationIndex];
       _conversations[conversationIndex] = Conversation(
-        id: _conversations[conversationIndex].id,
-        contactName: _conversations[conversationIndex].contactName,
+        id: originalConversation.id,
+        contactName: originalConversation.contactName,
         lastMessage: event.text,
         timestamp: newMessage.timestamp,
-        avatarUrl: _conversations[conversationIndex].avatarUrl,
-        unreadCount: _conversations[conversationIndex].id == event.conversationId ? 0 : _conversations[conversationIndex].unreadCount, // Reset unread if it's the active chat
+        avatarUrl: originalConversation.avatarUrl, // Preserve avatarUrl
+        unreadCount: originalConversation.id == event.conversationId ? 0 : originalConversation.unreadCount, // Preserve unreadCount or reset if current user is sender in this chat
       );
     }
+    
     // Ensure the updated conversation is at the top
-    final updatedConversation = _conversations.removeAt(conversationIndex);
-    _conversations.insert(0, updatedConversation);
+    // Create a new list for conversations
+    final List<Conversation> updatedConversationsList = List.from(_conversations);
+    if (conversationIndex != -1) { // Check if conversation was found before removing and inserting
+        final updatedConversation = updatedConversationsList.removeAt(conversationIndex);
+        updatedConversationsList.insert(0, updatedConversation);
+    }
+    _conversations = updatedConversationsList; // Update internal conversations
 
-    emit(ConversationLoaded(conversations: List.from(_conversations), messages: Map.from(_messages)));
+
+    emit(ConversationLoaded(conversations: updatedConversationsList, messages: updatedMessages));
   }
 
   void _onMarkConversationAsRead(MarkConversationAsRead event, Emitter<ConversationState> emit) {
     final conversationIndex = _conversations.indexWhere((conv) => conv.id == event.conversationId);
     if (conversationIndex != -1) {
-      // Create a new list from the existing conversations
       final List<Conversation> updatedConversations = List.from(_conversations);
-      
-      // Get the specific conversation to update
       final Conversation conversationToUpdate = updatedConversations[conversationIndex];
       
-      // Create a new Conversation instance with the unreadCount set to 0
       updatedConversations[conversationIndex] = Conversation(
-        id: conversationToUpdate.id,
-        contactName: conversationToUpdate.contactName,
-        lastMessage: conversationToUpdate.lastMessage,
-        timestamp: conversationToUpdate.timestamp,
-        avatarUrl: conversationToUpdate.avatarUrl,
+        id: conversationToUpdate.id, // Preserve ID
+        contactName: conversationToUpdate.contactName, // Preserve contactName
+        lastMessage: conversationToUpdate.lastMessage, // Preserve lastMessage
+        timestamp: conversationToUpdate.timestamp, // Preserve timestamp
+        avatarUrl: conversationToUpdate.avatarUrl, // Preserve avatarUrl
         unreadCount: 0, // Mark as read
       );
       
-      // Update the internal state (optional, but good practice if _conversations is used elsewhere)
       _conversations = updatedConversations;
 
-      // Emit the new state with the updated list of conversations
       emit(ConversationLoaded(conversations: updatedConversations, messages: Map.from(_messages)));
     }
   }

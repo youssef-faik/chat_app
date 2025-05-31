@@ -2,6 +2,7 @@ import 'package:chat_app/bloc/conversation/conversation_bloc.dart';
 import 'package:chat_app/bloc/conversation/conversation_event.dart';
 import 'package:chat_app/bloc/conversation/conversation_state.dart';
 import 'package:chat_app/models/message_model.dart';
+import 'package:chat_app/models/conversation_model.dart'; // Added this line
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -17,6 +18,24 @@ class ConversationDetailScreen extends StatefulWidget {
 
 class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
   final TextEditingController _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController(); // Add ScrollController
+
+  @override
+  void initState() { // Add initState
+    super.initState();
+    // Optional: Scroll to bottom when messages load or new messages arrive
+    // This requires listening to the Bloc state changes here or in the builder
+  }
+
+  void _scrollToBottom() { // Add _scrollToBottom
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +44,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
         title: BlocBuilder<ConversationBloc, ConversationState>(
           builder: (context, state) {
             if (state is ConversationLoaded) {
-              final conversation = state.conversations.firstWhere((c) => c.id == widget.conversationId);
+              final conversation = state.conversations.firstWhere((conv) => conv.id == widget.conversationId, orElse: () => Conversation(id: '', contactName: 'Chat', lastMessage: '', timestamp: DateTime.now()));
               return Text(conversation.contactName);
             }
             return const Text('Chat');
@@ -35,21 +54,26 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
       body: Column(
         children: [
           Expanded(
-            child: BlocBuilder<ConversationBloc, ConversationState>(
+            child: BlocConsumer<ConversationBloc, ConversationState>( // Use BlocConsumer
+              listener: (context, state) { // Add listener to scroll on new messages
+                if (state is ConversationLoaded) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+                }
+              },
               builder: (context, state) {
-                if (state is ConversationLoading) { // Simplified condition for loading
+                if (state is ConversationLoading) {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (state is ConversationLoaded) {
                   final messages = state.messages[widget.conversationId] ?? [];
                   if (messages.isEmpty) {
-                    return const Center(child: Text('No messages yet. Send one!'));
+                    return const Center(child: Text('No messages yet.'));
                   }
                   return ListView.builder(
-                    reverse: true, // To show latest messages at the bottom
+                    controller: _scrollController, // Assign controller
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
-                      final message = messages[messages.length - 1 - index]; // Display in reverse order
+                      final message = messages[index];
                       return _buildMessageBubble(message);
                     },
                   );
@@ -57,7 +81,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                 if (state is ConversationError) {
                   return Center(child: Text('Error: ${state.message}'));
                 }
-                return const Center(child: Text('Loading messages...'));
+                return const Center(child: Text('Loading chat...'));
               },
             ),
           ),
@@ -82,12 +106,12 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
           crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             Text(
-              message.content,
+              message.content, // Display message content
               style: TextStyle(color: isMe ? Colors.white : Colors.black),
             ),
             const SizedBox(height: 4),
             Text(
-              DateFormat('hh:mm a').format(message.timestamp),
+              DateFormat('hh:mm a').format(message.timestamp), // Display formatted timestamp
               style: TextStyle(fontSize: 10, color: isMe ? Colors.white70 : Colors.black54),
             ),
           ],
@@ -113,11 +137,8 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
         children: [
           Expanded(
             child: TextField(
-              controller: _messageController,
-              decoration: const InputDecoration(
-                hintText: 'Type a message...',
-                border: InputBorder.none,
-              ),
+              controller: _messageController, // Assign controller
+              decoration: const InputDecoration(hintText: 'Type a message...'), // Add hint text
               onSubmitted: (_) => _sendMessage(),
             ),
           ),
@@ -134,12 +155,14 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
     if (_messageController.text.trim().isNotEmpty) {
       context.read<ConversationBloc>().add(SendMessage(conversationId: widget.conversationId, text: _messageController.text.trim()));
       _messageController.clear();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom()); // Scroll after sending
     }
   }
 
  @override
   void dispose() {
     _messageController.dispose();
+    _scrollController.dispose(); // Dispose scrollController
     super.dispose();
   }
 }
